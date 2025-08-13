@@ -61,12 +61,20 @@ def analyze_mouse_path(points):
     pause_count = np.sum(speeds < 1)  # counts points where speed < 1 px/s
     
     # --- Robotic Score (0-10) ---
+    # score = 0
+    # if linearity_ratio > 0.92: score += 2       # very straight
+    # if speed_variance < 0.005: score += 2       # constant speed
+    # if acceleration_variance < 0.005: score += 2  # no acceleration profile
+    # if direction_change_variance < 0.01: score += 2  # no wobble
+    # if jitter_magnitude < 0.005: score += 1       # too smooth
+    # if pause_count == 0: score += 1              # no hesitations
+
     score = 0
-    if linearity_ratio > 0.98: score += 2       # very straight
-    if speed_variance < 0.001: score += 2       # constant speed
-    if acceleration_variance < 0.001: score += 2  # no acceleration profile
-    if direction_change_variance < 0.001: score += 2  # no wobble
-    if jitter_magnitude < 0.5: score += 1       # too smooth
+    if linearity_ratio > 0.92: score += 2       # very straight
+    if speed_variance < 0.15: score += 2       # constant speed
+    if acceleration_variance < 0.40: score += 2  # no acceleration profile
+    if direction_change_variance < 0.01: score += 2  # no wobble
+    if jitter_magnitude < 0.003: score += 1       # too smooth
     if pause_count == 0: score += 1              # no hesitations
     
     return {
