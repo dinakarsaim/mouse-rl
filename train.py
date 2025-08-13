@@ -5,9 +5,19 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 import time
 from robotic_detection_algo import analyze_mouse_path
+import keyboard
+
+screen_w, screen_h = pyautogui.size()
+
+def env_to_screen(x, y):
+    return int((x / 10) * screen_w), int((y / 10) * screen_h)
+
+def move_real_mouse(x, y):
+    screen_x, screen_y = env_to_screen(x, y)
+    pyautogui.moveTo(screen_x, screen_y, duration=0.01)  # smooth move
 
 class MouseEnvContinuous(gym.Env):
-    def __init__(self, target=(0.8, 0.8), step_size=0.02, max_steps=200):
+    def __init__(self, target=(0.8, 0.8), step_size=0.2, max_steps=200):
         super(MouseEnvContinuous, self).__init__()
         
         # self.mouse_pos = np.array([0.5, 0.5])
@@ -25,11 +35,12 @@ class MouseEnvContinuous(gym.Env):
         self.action_space = gym.spaces.Box(low=-1, high=1, shape=(3,), dtype=np.float32)
 
         # Observation: mouse_x, mouse_y, target_x, target_y
-        self.observation_space = gym.spaces.Box(low=0, high=1, shape=(5,), dtype=np.float32)
+        self.observation_space = gym.spaces.Box(low=0, high=10, shape=(5,), dtype=np.float32)
 
     def reset(self):
-        self.mouse_pos = np.array([0.5, 0.5])
-        self.target = np.random.uniform(low=0.1, high=0.9, size=(2,))
+        # self.mouse_pos = np.array([5.0, 5.0])
+        self.mouse_pos = np.random.uniform(low=1, high=9, size=(2,))
+        self.target = np.random.uniform(low=0, high=10, size=(2,))
         self.steps = 0
         self.path = [self.mouse_pos.copy()]
 
@@ -63,7 +74,7 @@ class MouseEnvContinuous(gym.Env):
             move = noisy_dxdy * self.step_size
 
         self.mouse_pos += move
-        self.mouse_pos = np.clip(self.mouse_pos, 0, 1)
+        self.mouse_pos = np.clip(self.mouse_pos, 0, 10)
         self.path.append(self.mouse_pos.copy())
 
         dist = np.linalg.norm(self.mouse_pos - self.target)
@@ -76,7 +87,7 @@ class MouseEnvContinuous(gym.Env):
         self.points.append((current_time_ms, self.mouse_pos[0], self.mouse_pos[1]))
         
         # Calculate robotic score only at episode end
-        if dist < 0.02 or self.steps >= self.max_steps:
+        if dist < 0.2 or self.steps >= self.max_steps:
             done = True
         
         # Base reward (closer is better)
@@ -97,8 +108,10 @@ class MouseEnvContinuous(gym.Env):
             if 1 <= pause <= 3:
                 reward += 5
             
-            if dist < 0.02:
+            if dist < 0.2:
                 reward += 10
+                if pause_flag == 1:
+                    reward += 5
         
         obs = np.concatenate([self.mouse_pos, self.target, [float(pause_flag)]])
         info = {}
@@ -106,13 +119,13 @@ class MouseEnvContinuous(gym.Env):
     
 
     def render(self):
-        plt.figure(figsize=(5, 5))
+        plt.figure(figsize=(10, 8))
         path = np.array(self.path)
         plt.plot(path[:, 0], path[:, 1], marker="o")
         plt.scatter(*self.target, color='red', label="Target")
         plt.title("Mouse path")
-        plt.xlim(0, 1)
-        plt.ylim(0, 1)
+        plt.xlim(0, 10)
+        plt.ylim(0, 10)
         plt.legend()
         plt.show()
 
@@ -154,7 +167,7 @@ def main():
     model = PPO('MlpPolicy', env, verbose=1)
     callback = RewardLoggerCallback()
 
-    model.learn(total_timesteps=200000, callback=callback)
+    model.learn(total_timesteps=250000, callback=callback)
 
     # Plot convergence (episode rewards)
     plt.plot(callback.episode_rewards)
@@ -164,13 +177,18 @@ def main():
     plt.show()
 
     # Test the trained agent
-    for _ in range (15):
+    for _ in range (1):
         obs = env.reset()
         done = False
         truncated = False
         while not done:
+            if keyboard.is_pressed("esc"):  # Emergency stop
+                print("Stopped by user")
+                break
             action, _states = model.predict(obs)
             obs, reward, done, info = env.step(action)
+
+            move_real_mouse(env.mouse_pos[0], env.mouse_pos[1])
 
         env.render()
 
