@@ -11,7 +11,7 @@ import pyautogui  # now imported here so we can get screen size
 SCREEN_W, SCREEN_H = pyautogui.size()
 
 class MouseEnvContinuous(gym.Env):
-    def __init__(self, step_size=50, max_steps=200):  # step_size in pixels
+    def __init__(self, step_size=25, max_steps=500):  # step_size in pixels
         super(MouseEnvContinuous, self).__init__()
         self.mouse_pos = None
         self.target = None
@@ -45,7 +45,7 @@ class MouseEnvContinuous(gym.Env):
         dx, dy, pause_flag_raw = action
         pause_flag = 1 if pause_flag_raw >= 0 else 0
 
-        noise = np.random.normal(0, 5, size=2)  # noise in pixels
+        noise = np.random.normal(0, 0, size=2)  # noise in pixels
         noisy_dxdy = np.clip(np.array([dx, dy]) + noise / self.step_size, -1, 1)
 
         if pause_flag == 1:
@@ -58,7 +58,9 @@ class MouseEnvContinuous(gym.Env):
         self.path.append(self.mouse_pos.copy())
 
         dist = np.linalg.norm(self.mouse_pos - self.target)
-        reward = -dist
+
+        # norm_dist = dist / np.linalg.norm([SCREEN_W, SCREEN_H])
+        reward = -dist/100
 
         self.steps += 1
         done = False
@@ -76,12 +78,12 @@ class MouseEnvContinuous(gym.Env):
             pause = scores.get("pause_count", 0)
 
             reward -= robotic_score * 7
-            if 2 < jitter < 20:  # jitter in pixels
+            if 1 < jitter < 10:  # jitter in pixels
                 reward += 5
             if 1 <= pause <= 3:
                 reward += 5
             if dist < 20:
-                reward += 10
+                reward += 20
                 if pause_flag == 1:
                     reward += 5
 
@@ -131,7 +133,7 @@ def train_only(total_timesteps=250000):
     return model
 
 
-def test_with_real_mouse(model, episodes=1):
+def test_with_real_mouse(model, episodes=5):
     import pyautogui
     pyautogui.PAUSE = 0.01
         
@@ -160,7 +162,7 @@ def test_with_real_mouse(model, episodes=1):
             while not done:
                 action, _states = model.predict(obs)
                 obs, reward, done, info = env.step(action)
-                move_real_mouse(env.mouse_pos[0], env.mouse_pos[1])
+                # move_real_mouse(env.mouse_pos[0], env.mouse_pos[1])
         except KeyboardInterrupt:
             print("Test interrupted.")
             break
@@ -173,13 +175,13 @@ def test_with_real_mouse(model, episodes=1):
 
 
 if __name__ == "__main__":
-    TRAIN = False
+    TRAIN = True
     TEST = True
 
     model = None
     if TRAIN:
-        model = train_only(total_timesteps=250000)
+        model = train_only(total_timesteps=500000)
     if TEST:
-        if model is None:
-            model = PPO.load("mouse_model_screen.zip")
-        test_with_real_mouse(model, episodes=1)
+        # if model is None:
+        #     model = PPO.load("mouse_model_screen.zip")
+        test_with_real_mouse(model, episodes=5)

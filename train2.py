@@ -20,6 +20,7 @@ class MouseEnvContinuous(gym.Env):
         self.points = []
 
         self.action_space = gym.spaces.Box(low=-1, high=1, shape=(3,), dtype=np.float32)
+
         self.observation_space = gym.spaces.Box(low=0, high=10, shape=(5,), dtype=np.float32)
 
     def reset(self):
@@ -84,7 +85,7 @@ class MouseEnvContinuous(gym.Env):
         plt.figure(figsize=(10, 8))
         path = np.array(self.path)
         plt.plot(path[:, 0], path[:, 1], marker="o")
-        plt.scatter(*self.target, label="Target")
+        plt.scatter(*self.target, color='red', label="Target")
         plt.title("Mouse path")
         plt.xlim(0, 10)
         plt.ylim(0, 10)
@@ -150,7 +151,7 @@ def test_with_real_mouse(model, episodes=1):
             while not done:
                 action, _states = model.predict(obs)
                 obs, reward, done, info = env.step(action)
-                move_real_mouse(env.mouse_pos[0], env.mouse_pos[1])
+                # move_real_mouse(env.mouse_pos[0], env.mouse_pos[1])
                 # small sleep so we don't saturate GUI event loop
                 time.sleep(0.005)
         except KeyboardInterrupt:
@@ -167,7 +168,7 @@ def test_with_real_mouse(model, episodes=1):
 
 if __name__ == "__main__":
     # Toggle these flags
-    TRAIN = False
+    TRAIN = True
     TEST = True
 
     model = None

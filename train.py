@@ -81,7 +81,6 @@ class MouseEnvContinuous(gym.Env):
             done = True
         
         # Base reward (closer is better)
-        reward = -dist
 
         if done:
             scores = analyze_mouse_path(self.points)
